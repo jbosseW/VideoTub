@@ -1,0 +1,26 @@
+services:
+  videotub:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Uncomment/adjust as needed:
+      # - ADMIN_KEY=change-me                 # enables the /admin dashboard + API
+      # - REQUIRE_APPROVAL=true               # hold uploads for review
+      # - MAX_UPLOAD_MB=250
+      # - MAX_DURATION_SEC=900
+      # - CONTENT_SCAN_CMD=python3 tools/nsfw_scan.py   # requires nudenet in image
+      - POW_DIFFICULTY=18
+    volumes:
+      - ./data:/app/data       # SQLite DB, denylists, moderation log
+      - ./videos:/app/videos   # stored video files
+      - ./thumbs:/app/thumbs    # generated thumbnails
+    restart: unless-stopped
+
+  # Optional: ClamAV malware scanning. VideoTub auto-detects clamscan on PATH.
+  # To use it, bake ClamAV into the image (add `clamav clamav-daemon` to the
+  # runtime apt-get) or run this sidecar and share a socket. Left commented
+  # because the virus DB download is heavy; see README.
+  # clamav:
+  #   image: clamav/clamav:latest
+  #   restart: unless-stopped

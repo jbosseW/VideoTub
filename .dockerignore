@@ -1,0 +1,7 @@
+node_modules
+data
+videos
+thumbs
+tmp
+.git
+*.log

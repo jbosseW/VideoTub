@@ -1,6 +1,18 @@
 # VideoTub — Gap Analysis & Roadmap
 
-_Where it is now, and what takes it to the next level. Written 2026-07-03._
+_Written 2026-07-03._
+
+## ✅ Shipped (this pass)
+
+Tiers 1 & 2 are largely done: **thumbnails**, **transcode-to-playable** (ffmpeg),
+**admin moderation dashboard** (`/admin.html`), **SQLite** storage, **Docker
+Compose** + Dockerfile, **perceptual-hash** re-upload blocking, **ClamAV**
+cross-platform malware scanning, and a **jest/supertest suite + GitHub Actions
+CI**. Plus most of Tier 3: **search, tag filtering, pagination, view counts,
+configurable retention, and an embed player**. The main item left is an
+S3-style storage backend (below).
+
+---
 
 ## Where it is now
 

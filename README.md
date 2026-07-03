@@ -9,11 +9,19 @@
 > [Deployment warning & liability](#deployment-warning--liability).
 
 Anonymous YouTube-style mini app:
-- Upload videos (no login)
-- Browse uploaded videos
-- Watch videos in browser
-- Malware scan before publish (Windows Defender)
-- Auto-delete videos after 24 hours
+- Upload videos (no login), with **thumbnails**, **tags**, and a **"keep for"
+  retention selector** (1h / 6h / 24h / 7d)
+- Browse a **thumbnail grid** with **search**, **tag filtering**, and **pagination**
+- Watch in-browser with **view counts** and a shareable **embed player** (`/embed/:id`)
+- Non-web-playable uploads (`.mkv`/`.avi`/…) are **transcoded to mp4** when ffmpeg
+  is present, so everything plays
+- **Malware scan** before publish (ClamAV if available, else Windows Defender)
+- **Admin moderation dashboard** at `/admin.html` (review queue, approve/remove/
+  ban/block with thumbnails)
+- **SQLite** storage; auto-delete on expiry
+
+Requires Node 18+; **ffmpeg** (optional) enables thumbnails/transcoding/perceptual
+hashing; **ClamAV** (optional) enables cross-platform malware scanning.
 
 **Moderation & abuse controls (built in):**
 - **Proof-of-work gate** — every upload must solve a SHA-256 PoW puzzle
@@ -70,24 +78,35 @@ security headers, PoW gate, reporting/takedown, and **user text is HTML-escaped*
 on the listing page and rendered via `textContent` on the watch page (no stored
 XSS). Remaining known limitations:
 
-- **JSON-file datastore** — concurrent uploads can race on the write. Fine for
-  light/trusted use, not for scale (SQLite is the planned fix — see the roadmap).
-- **Exact-match hash denylist only** — a re-encode evades it; perceptual hashing
-  is on the roadmap.
-- **Malware scan is Windows-only** — see the ffmpeg/Defender note above; ClamAV
-  support is on the roadmap.
+- **Storage is SQLite** (`better-sqlite3`) — atomic and indexed. Local disk still
+  bounds capacity; an S3-style backend is the remaining scale item.
+- **Denylisting is exact file-hash + perceptual (aHash)** — the perceptual hash
+  catches simple re-encodes, but it's coarse and can false-positive on similar
+  first frames; it's a re-upload deterrent, not a robust matcher.
+- **Malware scan** uses ClamAV when present, else Windows Defender; set
+  `MALWARE_SCAN=off` for trusted/dev to skip it.
 - **No automated detection of *new* illegal content** — the NudeNet hook and
   denylists catch NSFW/known-bad, but true CSAM detection needs a real hash
   source (NCMEC/PhotoDNA) you must wire in. See the deployment warning below.
 
 ## Run
-1. Open terminal in this folder
-2. Install deps:
-   - `npm.cmd install`
-3. Start server:
-   - `npm.cmd start`
-4. Open:
-   - `http://localhost:3000`
+
+```
+npm install
+npm start                 # http://localhost:3000
+npm test                  # run the test suite (jest + supertest)
+```
+
+Admin dashboard: set `ADMIN_KEY=...` and open `/admin.html`.
+
+### Docker
+
+```
+docker compose up --build   # bundles Node + ffmpeg; data in ./data, ./videos, ./thumbs
+```
+
+Configure via environment in `compose.yml` (see below). ClamAV is optional (a
+commented sidecar / image add-on in `compose.yml`).
 
 ## Optional Env Vars
 - `PORT` (default `3000`)
@@ -101,6 +120,9 @@ XSS). Remaining known limitations:
 - `REQUIRE_APPROVAL` (default `false`) — hold uploads for admin approval
 - `MAX_DURATION_SEC` (default `900`) — max clip length (needs `ffprobe`)
 - `CONTENT_SCAN_CMD` — external content scanner; file path appended as last arg
+- `MALWARE_SCAN` — set `off` to skip malware scanning (trusted/dev only)
+- `PAGE_SIZE` (default `24`) — videos per page in the listing
+- `VIDEOTUB_RUNTIME_DIR` — relocate the `data/`, `videos/`, `thumbs/`, `tmp/` dirs
 
 ### NSFW content scanning (optional)
 

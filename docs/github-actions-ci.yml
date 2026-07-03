@@ -1,0 +1,23 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node --check server.js && node --check db.js && node --check media.js
+      - run: npm test
+
+# ─────────────────────────────────────────────────────────────────────────────
+# To activate CI: copy this file to .github/workflows/ci.yml in the repo.
+# (It lives under docs/ here because pushing to .github/workflows/ needs a
+#  token with the `workflow` scope: `gh auth refresh -s workflow`, or just add
+#  it through the GitHub web UI → Actions → New workflow.)
