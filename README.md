@@ -12,6 +12,23 @@ Anonymous YouTube-style mini app:
 - Malware scan before publish (Windows Defender)
 - Auto-delete videos after 24 hours
 
+**Moderation & abuse controls (built in):**
+- **Content denylist** — uploads are SHA-256 hashed and rejected if the hash is
+  on `data/hash-blocklist.txt` (operator-maintained; the hook for blocking
+  known-bad/illegal files). A text denylist (`data/word-blocklist.txt`) rejects
+  banned terms in titles/descriptions.
+- **Reporting → auto-takedown** — anyone can report a video; after
+  `REPORT_AUTO_REMOVE` (default 3) distinct reports it is automatically removed.
+- **Deletion** — uploaders get a one-time delete key (stored only as a hash) to
+  remove their own video; admins can force-remove any video.
+- **Rate limiting** — per-IP caps on uploads and reports (in-memory).
+- **Admin API** — list videos + reports, force-delete, and add hashes to the
+  denylist, gated by an `ADMIN_KEY`.
+- **Security headers** — CSP, `nosniff`, frame/referrer/CORP policies on every
+  response.
+- **Privacy** — uploader IPs are stored only as per-process salted hashes, never
+  in plaintext.
+
 ## Security + Limits
 - Allowed file types only: `.mp4`, `.webm`, `.mkv`, `.mov`, `.avi`, `.m4v`
 - Default max upload size: `250 MB`
@@ -58,18 +75,43 @@ via `textContent` on the watch page (no stored XSS). Known gaps, by design or no
 - `PORT` (default `3000`)
 - `MAX_UPLOAD_MB` (default `250`)
 - `ALLOW_UNSCANNED_UPLOADS` (default `false`; set `true` only for local dev fallback)
+- `ADMIN_KEY` — enables the admin moderation API when set (sent as `x-admin-key`)
+- `REPORT_AUTO_REMOVE` (default `3`) — distinct reports before auto-takedown
+- `UPLOAD_RATE_MAX` (default `5`) / `REPORT_RATE_MAX` (default `20`) per window
+- `RATE_WINDOW_MS` (default `600000` = 10 min)
+
+## Moderation API & files
+
+- **`data/hash-blocklist.txt`** — one SHA-256 hex hash per line; matching uploads
+  are rejected. **`data/word-blocklist.txt`** — one banned term per line (matched
+  in title/description/filename). Both reload live; `#` lines are comments.
+- **`data/moderation.log`** — appended record of reports, removals, and blocks.
+- **Endpoints:**
+  - `POST /api/videos/:id/report` `{reason}` — report; auto-removes at threshold.
+  - `DELETE /api/videos/:id` `{token}` — uploader deletes via their delete key.
+  - `GET /api/admin/videos` — all videos + reports *(header `x-admin-key`)*.
+  - `DELETE /api/admin/videos/:id?block=1` — force-remove (and optionally
+    denylist the file's hash).
+  - `POST /api/admin/blocklist` `{hash}` — add a hash to the denylist.
+
+> These controls make abuse handling *possible*; they are not a substitute for a
+> human moderator, legal review, or the operator duties in the warning below.
 
 ## Deployment warning & liability
 
-This project is **deliberately minimal** and is designed for private, LAN,
-or trusted-group use. It intentionally does **not** include the things a
-publicly reachable upload service is responsible for:
+This project now ships **basic** abuse controls (reporting + auto-takedown, a
+hash/word denylist, admin removal, rate limiting, security headers). Those make
+responsible operation *possible*, but they are a floor, not a compliant service.
+It still does **not** include:
 
-- no content moderation, review queue, or abuse-report mechanism
-- no takedown workflow (DMCA or otherwise) and no designated agent
-- no terms of service, age gating, or user accounts
-- no request logging suitable for responding to legal process
-- no rate limiting
+- a human moderation/review queue or proactive content scanning (the hash
+  denylist only blocks files you already know are bad; it cannot detect *new*
+  illegal content)
+- a DMCA designated agent or formal notice-and-counter-notice workflow
+- a terms of service, age verification, or user accounts
+- request logging/retention suitable for responding to legal process
+- known-hash matching against authoritative sources (e.g. NCMEC/PhotoDNA) —
+  the denylist is a manual hook you must populate
 
 The built-in malware scan checks files for malware — it does not and cannot
 judge *content*. If you operate an instance that accepts uploads from
@@ -77,14 +119,14 @@ strangers, **you** are the service operator: obligations around illegal
 content (including mandatory reporting duties in many jurisdictions),
 copyright takedowns, and abuse handling fall on you, not on this codebase
 or its authors. Do not deploy this on the open internet without adding the
-missing operational and legal machinery.
+remaining operational and legal machinery.
 
 **The 24-hour auto-delete is not a legal shield.** Ephemerality does not remove
 an operator's duties: if illegal material (e.g. CSAM) is uploaded, reporting and
-preservation obligations can attach *regardless* of automatic deletion, and there
-is currently **no in-app way to report, review, or take down a specific video**
-before it expires. Treat "it deletes itself" as a privacy feature, not a
-compliance strategy.
+preservation obligations can attach *regardless* of automatic deletion. The
+built-in reporting/takedown lets users flag and remove content, but it does not
+detect illegal uploads for you. Treat "it deletes itself" as a privacy feature,
+not a compliance strategy.
 
 **Recommendation:** run this only on a private/LAN/trusted network. Do not expose
 an anonymous public instance without first adding content moderation, a

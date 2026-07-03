@@ -2,7 +2,7 @@
   "name": "videotub",
   "version": "1.0.0",
   "private": true,
-  "description": "Anonymous video upload and watch app with file-type restrictions and malware scanning",
+  "description": "Anonymous video upload and watch app with file-type restrictions, malware scanning, hash-denylist moderation, rate limiting, reporting, and takedown",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

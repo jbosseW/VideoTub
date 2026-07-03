@@ -150,3 +150,14 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Report / delete actions (watch page) */
+.actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.actions button {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid #3a3a44;
+  background: #23232b; color: #e8e8ef; cursor: pointer; font-size: 14px;
+}
+.actions button:hover { background: #2d2d37; }
+.actions button:disabled { opacity: 0.5; cursor: default; }
+#report-btn { border-color: #6a3a3a; }
+#report-btn:hover { background: #3a2626; }

@@ -106,8 +106,21 @@ form.addEventListener("submit", async (event) => {
       throw new Error(payload.error || "Upload failed.");
     }
 
+    // Save the delete token in this browser so the uploader can remove their
+    // own video from its watch page. It is shown once and never stored server-side
+    // in plaintext.
+    try {
+      const mine = JSON.parse(localStorage.getItem("videotub_uploads") || "[]");
+      mine.push({ id: payload.video.id, token: payload.deleteToken, title: payload.video.title, ts: Date.now() });
+      localStorage.setItem("videotub_uploads", JSON.stringify(mine.slice(-50)));
+    } catch (_) {}
+
     form.reset();
-    setStatus("Upload complete.");
+    setStatus(
+      payload.deleteToken
+        ? `Upload complete. Delete key (save to remove your video): ${payload.deleteToken}`
+        : "Upload complete."
+    );
     await loadVideos();
   } catch (err) {
     setStatus(err.message || "Upload failed.", true);
