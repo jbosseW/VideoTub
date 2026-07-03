@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VideoTub</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>VideoTub</h1>
+      <p>Anonymous video uploads. Auto-delete after 24 hours.</p>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <h2>Upload Video</h2>
+        <p id="upload-rules" class="hint">Loading upload rules...</p>
+        <form id="upload-form">
+          <label>
+            Title
+            <input type="text" name="title" maxlength="100" placeholder="Video title" />
+          </label>
+          <label>
+            Description
+            <textarea name="description" maxlength="800" rows="3" placeholder="Short description"></textarea>
+          </label>
+          <label>
+            Video File
+            <input type="file" name="video" accept=".mp4,.webm,.mkv,.mov,.avi,.m4v,video/*" required />
+          </label>
+          <button type="submit" id="upload-btn">Upload</button>
+        </form>
+        <p id="upload-status" class="status"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Latest Videos</h2>
+        <div id="video-list" class="cards"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
