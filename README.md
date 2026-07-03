@@ -1,9 +1,12 @@
 # VideoTub
 
-> **Scope: private / LAN / trusted-group use only.** This is a small
-> self-hosted tool, not a public video platform. See
-> [Deployment warning & liability](#deployment-warning--liability) before
-> exposing it to the internet.
+> **Read before hosting.** VideoTub is an anonymous video-upload app, meant for
+> sharing short clips (game highlights, memes) on a self-hosted instance. It now
+> ships real abuse controls (proof-of-work, content scanning, reporting,
+> takedown, bans — see below), but anonymous public video hosting still carries
+> heavy operator obligations. **Start private/LAN and enable the controls before
+> considering a public instance.** See
+> [Deployment warning & liability](#deployment-warning--liability).
 
 Anonymous YouTube-style mini app:
 - Upload videos (no login)
@@ -175,3 +178,23 @@ process, a terms of service, and independent legal review for your jurisdiction.
 This software is provided **"as is", without warranty of any kind**; the
 authors accept no liability for how deployed instances are used. See
 [LICENSE](LICENSE).
+
+## Licensing
+
+- **VideoTub's own code is MIT** — see [LICENSE](LICENSE). Use, fork, and modify
+  freely; no warranty (see above).
+- **Runtime dependencies keep their own licenses.** `express` and `multer` are
+  MIT (installed via `npm install`).
+- **Optional tools are installed separately and are not bundled or
+  redistributed by this repo** — you install them on your host, under their own
+  licenses:
+  - **NudeNet** (used by `tools/nsfw_scan.py` only if you enable content
+    scanning) — install via `pip install nudenet`; subject to its own license.
+  - **ffmpeg / ffprobe** — used for frame sampling and video validation if
+    present; installed separately under its own (LGPL/GPL) terms.
+  - **Windows Defender** (`MpCmdRun.exe`) — an OS component, invoked if present.
+- The proof-of-work module (`pow.js`) is original MIT code.
+
+Because those optional tools are only ever *invoked* (never copied into this
+repo), VideoTub itself stays MIT-clean; if you redistribute a bundle that
+*includes* them, honor their licenses too.
