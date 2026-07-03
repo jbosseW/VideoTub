@@ -139,6 +139,12 @@ code (0 = allow, non-zero = reject).
 > These controls make abuse handling *possible*; they are not a substitute for a
 > human moderator, legal review, or the operator duties in the warning below.
 
+## Roadmap
+
+See [`docs/GAP_ANALYSIS.md`](docs/GAP_ANALYSIS.md) for where VideoTub can go next
+(thumbnails, transcoding, an admin dashboard, SQLite, Docker, perceptual
+hashing, cross-platform scanning, tests/CI).
+
 ## Deployment warning & liability
 
 This project now ships **basic** abuse controls (reporting + auto-takedown, a
