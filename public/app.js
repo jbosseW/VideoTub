@@ -14,6 +14,90 @@ function formatDate(ts) {
   return new Date(ts).toLocaleString();
 }
 
+// ---- Proof-of-work solver (anti-bot). Runs SHA-256 puzzle in a Web Worker. ----
+const _powWorkerCode = `
+self.onmessage = async function(e) {
+  var challenge = e.data.challenge, difficulty = e.data.difficulty;
+  var enc = new TextEncoder(), nonce = 0, BATCH = 2048;
+  function hasZeros(buf, bits) {
+    var fb = Math.floor(bits/8), rb = bits%8;
+    for (var i=0;i<fb;i++){ if (buf[i]!==0) return false; }
+    if (rb>0){ var m = 0xFF << (8-rb); if ((buf[fb]&m)!==0) return false; }
+    return true;
+  }
+  while (true) {
+    var proms = [], base = nonce;
+    for (var i=0;i<BATCH;i++){
+      var n = (base+i).toString(16);
+      proms.push(crypto.subtle.digest('SHA-256', enc.encode(challenge+n)).then(function(b){
+        return { nonce: this, hash: new Uint8Array(b) };
+      }.bind(n)));
+    }
+    nonce += BATCH;
+    var results = await Promise.all(proms);
+    for (var j=0;j<results.length;j++){
+      if (hasZeros(results[j].hash, difficulty)){ self.postMessage({done:true, nonce:results[j].nonce}); return; }
+    }
+  }
+};
+`;
+
+function solvePoW(challenge, difficulty) {
+  return new Promise((resolve, reject) => {
+    try {
+      const url = URL.createObjectURL(new Blob([_powWorkerCode], { type: "application/javascript" }));
+      const worker = new Worker(url);
+      const to = setTimeout(() => { worker.terminate(); URL.revokeObjectURL(url); reject(new Error("PoW timed out")); }, 120000);
+      worker.onmessage = (e) => {
+        if (e.data.done) { clearTimeout(to); worker.terminate(); URL.revokeObjectURL(url); resolve(e.data.nonce); }
+      };
+      worker.onerror = (err) => { clearTimeout(to); worker.terminate(); URL.revokeObjectURL(url); reject(err); };
+      worker.postMessage({ challenge, difficulty });
+    } catch (err) { reject(err); }
+  });
+}
+
+async function fetchAndSolvePoW() {
+  const resp = await fetch("/api/pow/challenge");
+  if (!resp.ok) throw new Error("Failed to get proof-of-work challenge.");
+  const data = await resp.json();
+  const nonce = await solvePoW(data.challenge, data.difficulty);
+  return { challenge: data.challenge, nonce };
+}
+
+// Best-effort browser fingerprint (IP-independent abuse signal). Not a MAC
+// address — a web page cannot read one — and it is defeatable, but it makes
+// ban evasion by IP-change harder. Combines stable-ish signals + a canvas hash.
+function computeFingerprint() {
+  try {
+    const parts = [
+      navigator.userAgent || "",
+      navigator.language || "",
+      (navigator.languages || []).join(","),
+      new Date().getTimezoneOffset(),
+      screen.width + "x" + screen.height + "x" + (screen.colorDepth || ""),
+      navigator.hardwareConcurrency || "",
+      navigator.platform || "",
+      navigator.deviceMemory || "",
+    ];
+    // Canvas fingerprint
+    try {
+      const c = document.createElement("canvas");
+      const ctx = c.getContext("2d");
+      ctx.textBaseline = "top";
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "#f60";
+      ctx.fillRect(10, 10, 60, 20);
+      ctx.fillStyle = "#069";
+      ctx.fillText("VideoTub", 12, 12);
+      parts.push(c.toDataURL().slice(-64));
+    } catch (_) {}
+    return parts.join("|");
+  } catch (_) {
+    return "";
+  }
+}
+
 let appConfig = {
   maxUploadMb: 250,
   allowedExtensions: [".mp4", ".webm", ".mkv", ".mov", ".avi", ".m4v"],
@@ -93,10 +177,24 @@ form.addEventListener("submit", async (event) => {
   }
 
   uploadBtn.disabled = true;
-  setStatus("Uploading...");
 
   try {
     const formData = new FormData(form);
+    formData.append("fp", computeFingerprint());
+
+    // Solve the anti-bot proof-of-work before uploading (if the server requires it).
+    if (appConfig.powRequired) {
+      setStatus("Verifying (proof-of-work)...");
+      try {
+        const pow = await fetchAndSolvePoW();
+        formData.append("powChallenge", pow.challenge);
+        formData.append("powNonce", pow.nonce);
+      } catch (powErr) {
+        throw new Error("Proof-of-work failed: " + (powErr.message || "try again"));
+      }
+    }
+
+    setStatus("Uploading...");
     const res = await fetch("/api/upload", {
       method: "POST",
       body: formData,
@@ -116,10 +214,13 @@ form.addEventListener("submit", async (event) => {
     } catch (_) {}
 
     form.reset();
+    const base = payload.pending
+      ? "Uploaded — held for review; it will appear once approved."
+      : "Upload complete.";
     setStatus(
       payload.deleteToken
-        ? `Upload complete. Delete key (save to remove your video): ${payload.deleteToken}`
-        : "Upload complete."
+        ? `${base} Delete key (save to remove your video): ${payload.deleteToken}`
+        : base
     );
     await loadVideos();
   } catch (err) {

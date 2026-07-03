@@ -13,17 +13,31 @@ Anonymous YouTube-style mini app:
 - Auto-delete videos after 24 hours
 
 **Moderation & abuse controls (built in):**
+- **Proof-of-work gate** — every upload must solve a SHA-256 PoW puzzle
+  (`pow.js`, ~1-2s in a browser Web Worker) before it's accepted. Raises the cost
+  of bots/automation/spam. On by default; `POW_DISABLED=true` to turn off.
+- **Real video validation** — uploads are checked by magic bytes (a non-video
+  renamed `.mp4` is rejected), and, if `ffprobe` is installed, must decode as
+  video and be within `MAX_DURATION_SEC` (default 15 min — keeps out long-form).
+- **Pluggable content scanner** — set `CONTENT_SCAN_CMD` to an external NSFW/ML
+  classifier (see `tools/nsfw_scan.py` for a ready-to-use NudeNet scanner). It's
+  given the file path; non-zero exit rejects the upload (fails closed).
+- **Pre-publish approval** — `REQUIRE_APPROVAL=true` holds every upload for admin
+  review before it's listed/watchable. The strongest guard for a shared instance.
 - **Content denylist** — uploads are SHA-256 hashed and rejected if the hash is
-  on `data/hash-blocklist.txt` (operator-maintained; the hook for blocking
-  known-bad/illegal files). A text denylist (`data/word-blocklist.txt`) rejects
-  banned terms in titles/descriptions.
+  on `data/hash-blocklist.txt`. A text denylist (`data/word-blocklist.txt`, plus
+  a small built-in seed list) rejects banned terms in titles/descriptions.
 - **Reporting → auto-takedown** — anyone can report a video; after
   `REPORT_AUTO_REMOVE` (default 3) distinct reports it is automatically removed.
 - **Deletion** — uploaders get a one-time delete key (stored only as a hash) to
   remove their own video; admins can force-remove any video.
+- **Bans** — uploaders are identified by a salted IP hash *and* a browser
+  fingerprint hash (an IP change alone doesn't dodge a ban). Admins can ban on
+  removal (`?ban=1`). Note: a device MAC address is **not** obtainable by a web
+  server, so a fingerprint is the closest durable signal (and is defeatable).
 - **Rate limiting** — per-IP caps on uploads and reports (in-memory).
-- **Admin API** — list videos + reports, force-delete, and add hashes to the
-  denylist, gated by an `ADMIN_KEY`.
+- **Admin API** — review/approve, force-delete, ban, and manage denylists, gated
+  by `ADMIN_KEY`.
 - **Security headers** — CSP, `nosniff`, frame/referrer/CORP policies on every
   response.
 - **Privacy** — uploader IPs are stored only as per-process salted hashes, never
@@ -79,6 +93,27 @@ via `textContent` on the watch page (no stored XSS). Known gaps, by design or no
 - `REPORT_AUTO_REMOVE` (default `3`) — distinct reports before auto-takedown
 - `UPLOAD_RATE_MAX` (default `5`) / `REPORT_RATE_MAX` (default `20`) per window
 - `RATE_WINDOW_MS` (default `600000` = 10 min)
+- `POW_DISABLED` (default off) / `POW_DIFFICULTY` (default `18` leading zero bits)
+- `REQUIRE_APPROVAL` (default `false`) — hold uploads for admin approval
+- `MAX_DURATION_SEC` (default `900`) — max clip length (needs `ffprobe`)
+- `CONTENT_SCAN_CMD` — external content scanner; file path appended as last arg
+
+### NSFW content scanning (optional)
+
+`tools/nsfw_scan.py` is a ready-to-use scanner: it samples frames with `ffmpeg`
+and runs the open-source **NudeNet** detector, rejecting the upload if disallowed
+content is found. Enable it:
+
+```
+pip install nudenet          # on the host running VideoTub
+# ffmpeg must be on PATH
+CONTENT_SCAN_CMD="python tools/nsfw_scan.py" node server.js
+```
+
+It fails closed (rejects) if `nudenet`/`ffmpeg` are missing, so scanning is never
+silently skipped once enabled. Swap in any other classifier or a cloud
+moderation API the same way — VideoTub just runs the command and checks the exit
+code (0 = allow, non-zero = reject).
 
 ## Moderation API & files
 
@@ -86,13 +121,17 @@ via `textContent` on the watch page (no stored XSS). Known gaps, by design or no
   are rejected. **`data/word-blocklist.txt`** — one banned term per line (matched
   in title/description/filename). Both reload live; `#` lines are comments.
 - **`data/moderation.log`** — appended record of reports, removals, and blocks.
+- **`data/ip-banlist.txt`** — banned uploader hashes (IP-hash or fingerprint-hash).
 - **Endpoints:**
+  - `GET /api/pow/challenge` — get a proof-of-work challenge (client solves it).
   - `POST /api/videos/:id/report` `{reason}` — report; auto-removes at threshold.
   - `DELETE /api/videos/:id` `{token}` — uploader deletes via their delete key.
-  - `GET /api/admin/videos` — all videos + reports *(header `x-admin-key`)*.
-  - `DELETE /api/admin/videos/:id?block=1` — force-remove (and optionally
-    denylist the file's hash).
-  - `POST /api/admin/blocklist` `{hash}` — add a hash to the denylist.
+  - `GET /api/admin/videos` — all videos + reports + approval state *(x-admin-key)*.
+  - `POST /api/admin/videos/:id/approve` — approve a held upload.
+  - `DELETE /api/admin/videos/:id?block=1&ban=1` — force-remove; optionally
+    denylist the file's hash and ban the uploader (IP + fingerprint).
+  - `POST /api/admin/blocklist` `{hash}` — add a file hash to the denylist.
+  - `POST /api/admin/ban` `{ipHash}` — ban an uploader hash.
 
 > These controls make abuse handling *possible*; they are not a substitute for a
 > human moderator, legal review, or the operator duties in the warning below.
