@@ -5,11 +5,17 @@
   "description": "Anonymous video upload and watch app with file-type restrictions, malware scanning, hash-denylist moderation, rate limiting, reporting, and takedown",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest --runInBand --forceExit"
   },
   "dependencies": {
+    "better-sqlite3": "^12.11.1",
     "express": "^4.21.2",
     "multer": "^2.0.2"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
+  }
 }
