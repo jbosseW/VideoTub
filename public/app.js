@@ -118,18 +118,23 @@ function setStatus(text, isError = false) {
 
 function renderVideos(videos) {
   if (!Array.isArray(videos) || videos.length === 0) {
-    listEl.innerHTML = "<p class='hint'>No videos uploaded yet.</p>";
+    listEl.innerHTML = "<p class='hint'>No videos found.</p>";
     return;
   }
 
   listEl.innerHTML = videos
     .map((v) => {
       const title = v.title || "Untitled";
+      const href = `/watch.html?id=${encodeURIComponent(v.id)}`;
+      const thumb = v.thumbUrl
+        ? `<img class="thumb" src="${escapeHtml(v.thumbUrl)}" alt="" loading="lazy">`
+        : `<div class="thumb noThumb">▶</div>`;
+      const tags = (v.tags || []).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("");
       return `<article class="card">
-        <h3>${escapeHtml(title)}</h3>
-        <p>Size: ${formatBytes(v.sizeBytes)} | Uploaded: ${formatDate(v.uploadedAt)}</p>
-        <p>Expires: ${formatDate(v.expiresAt)}</p>
-        <a href="/watch.html?id=${encodeURIComponent(v.id)}">Watch</a>
+        <a href="${href}">${thumb}</a>
+        <h3><a href="${href}">${escapeHtml(title)}</a></h3>
+        <p class="hint">${formatBytes(v.sizeBytes)} · ${v.views || 0} views · ${formatDate(v.uploadedAt)}</p>
+        <div class="tag-bar">${tags}</div>
       </article>`;
     })
     .join("");
@@ -144,20 +149,57 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
+let curPage = 0, curQuery = "", curTag = "", curTotal = 0;
+
 async function loadConfig() {
   const res = await fetch("/api/config");
   if (!res.ok) throw new Error("Failed to load configuration.");
   appConfig = await res.json();
-  rulesEl.textContent = `Allowed: ${appConfig.allowedExtensions.join(", ")}. Max size: ${
-    appConfig.maxUploadMb
-  } MB. Videos auto-delete after ${appConfig.retentionHours} hours.`;
+  rulesEl.textContent = `Allowed: ${appConfig.allowedExtensions.join(", ")}. Max size: ${appConfig.maxUploadMb} MB.`;
+  // Populate the retention selector.
+  const sel = document.getElementById("retention-select");
+  if (sel && appConfig.retentionOptions) {
+    const label = (h) => (h >= 168 ? "7 days" : h >= 24 ? `${h / 24} day${h > 24 ? "s" : ""}` : `${h} hour${h > 1 ? "s" : ""}`);
+    sel.innerHTML = appConfig.retentionOptions.map((h) =>
+      `<option value="${h}" ${h === appConfig.retentionHours ? "selected" : ""}>${label(h)}</option>`).join("");
+  }
+}
+
+async function loadTags() {
+  try {
+    const res = await fetch("/api/tags");
+    const { tags } = await res.json();
+    const bar = document.getElementById("tag-bar");
+    if (!bar) return;
+    bar.innerHTML = (tags || []).map((t) =>
+      `<span class="tag ${t === curTag ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join("");
+    bar.querySelectorAll(".tag").forEach((el) => el.addEventListener("click", () => {
+      curTag = curTag === el.dataset.tag ? "" : el.dataset.tag;
+      curPage = 0; loadVideos(); loadTags();
+    }));
+  } catch (_) {}
 }
 
 async function loadVideos() {
-  const res = await fetch("/api/videos");
+  const params = new URLSearchParams({ page: curPage });
+  if (curQuery) params.set("q", curQuery);
+  if (curTag) params.set("tag", curTag);
+  const res = await fetch("/api/videos?" + params.toString());
   if (!res.ok) throw new Error("Failed to load videos.");
   const payload = await res.json();
+  curTotal = payload.total || 0;
   renderVideos(payload.videos || []);
+  renderPager(payload);
+}
+
+function renderPager(p) {
+  const prev = document.getElementById("prev-btn");
+  const next = document.getElementById("next-btn");
+  const info = document.getElementById("page-info");
+  const pages = Math.max(1, Math.ceil((p.total || 0) / (p.pageSize || 24)));
+  if (info) info.textContent = p.total ? `Page ${p.page + 1} of ${pages} · ${p.total} videos` : "";
+  if (prev) prev.style.display = p.page > 0 ? "" : "none";
+  if (next) next.style.display = p.page + 1 < pages ? "" : "none";
 }
 
 form.addEventListener("submit", async (event) => {
@@ -222,7 +264,10 @@ form.addEventListener("submit", async (event) => {
         ? `${base} Delete key (save to remove your video): ${payload.deleteToken}`
         : base
     );
+    curPage = 0; curQuery = ""; curTag = "";
+    const si = document.getElementById("search-input"); if (si) si.value = "";
     await loadVideos();
+    await loadTags();
   } catch (err) {
     setStatus(err.message || "Upload failed.", true);
   } finally {
@@ -230,10 +275,27 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+// Search (debounced) + pagination wiring.
+let _searchTimer;
+const _searchInput = document.getElementById("search-input");
+if (_searchInput) {
+  _searchInput.addEventListener("input", () => {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(() => {
+      curQuery = _searchInput.value.trim(); curPage = 0; loadVideos().catch(() => {});
+    }, 300);
+  });
+}
+document.getElementById("prev-btn")?.addEventListener("click", () => { if (curPage > 0) { curPage--; loadVideos(); window.scrollTo(0, 0); } });
+document.getElementById("next-btn")?.addEventListener("click", () => { curPage++; loadVideos(); window.scrollTo(0, 0); });
+
 async function init() {
   try {
+    const urlTag = new URLSearchParams(location.search).get("tag");
+    if (urlTag) curTag = urlTag.toLowerCase();
     await loadConfig();
     await loadVideos();
+    await loadTags();
   } catch (err) {
     setStatus(err.message || "Failed to initialize app.", true);
   }

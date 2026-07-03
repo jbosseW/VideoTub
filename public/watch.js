@@ -40,11 +40,22 @@ async function initWatchPage() {
 
     const video = payload.video;
     titleEl.textContent = video.title || "Untitled";
-    metaEl.textContent = `Size: ${formatBytes(video.sizeBytes)} | Uploaded: ${formatDate(
+    metaEl.textContent = `${formatBytes(video.sizeBytes)} · ${video.views || 0} views · uploaded ${formatDate(
       video.uploadedAt
-    )} | Expires: ${formatDate(video.expiresAt)}`;
+    )} · expires ${formatDate(video.expiresAt)}`;
     descriptionEl.textContent = video.description || "";
+    if (video.thumbUrl) player.poster = video.thumbUrl;
     player.src = video.videoUrl;
+
+    // Tags + embed link
+    const tagsEl = document.getElementById("video-tags");
+    if (tagsEl) tagsEl.innerHTML = (video.tags || []).map((t) =>
+      `<a class="tag" href="/?tag=${encodeURIComponent(t)}">${t.replace(/[<>&"']/g, "")}</a>`).join("");
+    const embedEl = document.getElementById("embed-code");
+    if (embedEl) {
+      const url = `${location.origin}/embed/${encodeURIComponent(id)}`;
+      embedEl.value = `<iframe src="${url}" width="640" height="360" frameborder="0" allowfullscreen></iframe>`;
+    }
     wireActions(id);
   } catch (err) {
     titleEl.textContent = err.message || "Failed to load video.";

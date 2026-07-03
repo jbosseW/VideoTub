@@ -26,6 +26,14 @@
             <textarea name="description" maxlength="800" rows="3" placeholder="Short description"></textarea>
           </label>
           <label>
+            Tags (comma-separated, e.g. games, funny)
+            <input type="text" name="tags" maxlength="200" placeholder="games, clip, meme" />
+          </label>
+          <label>
+            Keep for
+            <select name="retentionHours" id="retention-select"></select>
+          </label>
+          <label>
             Video File
             <input type="file" name="video" accept=".mp4,.webm,.mkv,.mov,.avi,.m4v,video/*" required />
           </label>
@@ -35,8 +43,17 @@
       </section>
 
       <section class="panel">
-        <h2>Latest Videos</h2>
+        <div class="actions" style="justify-content:space-between;align-items:center">
+          <h2 style="margin:0">Latest Videos</h2>
+          <input id="search-input" type="search" placeholder="Search…" />
+        </div>
+        <div id="tag-bar" class="tag-bar"></div>
         <div id="video-list" class="cards"></div>
+        <div class="actions" style="justify-content:center">
+          <button id="prev-btn" type="button" style="display:none">← Prev</button>
+          <span id="page-info" class="hint"></span>
+          <button id="next-btn" type="button" style="display:none">Next →</button>
+        </div>
       </section>
     </main>
 

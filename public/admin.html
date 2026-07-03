@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VideoTub — Moderation</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="link" href="/">Back to Home</a>
+    <h1>Moderation</h1>
+  </header>
+
+  <main class="layout">
+    <section class="panel" id="login-panel">
+      <h2>Admin sign-in</h2>
+      <p class="hint">Enter the <code>ADMIN_KEY</code> configured on the server.</p>
+      <input id="key-input" type="password" placeholder="admin key" autocomplete="off" />
+      <button id="key-btn" type="button">Load queue</button>
+      <p id="login-status" class="status"></p>
+    </section>
+
+    <section class="panel wide" id="queue-panel" style="display:none">
+      <div class="actions" style="justify-content:space-between">
+        <h2 style="margin:0">Videos <span id="count" class="hint"></span></h2>
+        <button id="refresh-btn" type="button">Refresh</button>
+      </div>
+      <div id="admin-list" class="admin-grid"></div>
+    </section>
+  </main>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

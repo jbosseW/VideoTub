@@ -17,7 +17,12 @@
         <h2 id="video-title">Loading...</h2>
         <p id="video-meta" class="hint"></p>
         <video id="player" controls autoplay class="player"></video>
+        <div id="video-tags" class="tag-bar"></div>
         <p id="video-description"></p>
+        <details class="embed-box">
+          <summary>Embed / share</summary>
+          <input id="embed-code" readonly onclick="this.select()" />
+        </details>
         <div class="actions">
           <button id="report-btn" type="button">Report this video</button>
           <button id="delete-btn" type="button" style="display:none">Delete my video</button>

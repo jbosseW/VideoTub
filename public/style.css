@@ -161,3 +161,41 @@ button:disabled {
 .actions button:disabled { opacity: 0.5; cursor: default; }
 #report-btn { border-color: #6a3a3a; }
 #report-btn:hover { background: #3a2626; }
+
+/* ---- Thumbnails, tags, pagination, admin (added for v2) ---- */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.card { background: #1c1c22; border: 1px solid #2a2a33; border-radius: 10px; overflow: hidden; }
+.card h3 { margin: 8px 10px 4px; font-size: 15px; }
+.card h3 a, .card a { color: #e8e8ef; text-decoration: none; }
+.card .hint { margin: 0 10px; }
+.thumb { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #000; }
+.noThumb { display: flex; align-items: center; justify-content: center; color: #556; font-size: 32px; }
+
+.tag-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 10px; }
+.tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #26313a;
+  color: #a9c7d6; cursor: pointer; text-decoration: none; }
+.tag.active { background: #2f6f8f; color: #fff; }
+
+#search-input { padding: 8px 12px; border-radius: 8px; border: 1px solid #3a3a44;
+  background: #16161b; color: #e8e8ef; min-width: 180px; }
+
+.embed-box { margin: 10px 0; }
+.embed-box input { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #3a3a44;
+  background: #16161b; color: #cfcfe0; font-family: monospace; font-size: 12px; }
+
+.badge-pending { font-size: 11px; background: #7a5a1a; color: #fff; padding: 1px 7px; border-radius: 999px; }
+.badge-report { font-size: 11px; background: #7a2a2a; color: #fff; padding: 1px 7px; border-radius: 999px; }
+
+.admin-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.admin-card { display: grid; grid-template-columns: 180px 1fr; gap: 12px; background: #1c1c22;
+  border: 1px solid #2a2a33; border-radius: 10px; overflow: hidden; }
+.admin-thumb img, .admin-thumb .noThumb { width: 180px; aspect-ratio: 16/9; object-fit: cover; }
+.admin-body { padding: 10px 12px 12px 0; }
+.admin-body h3 { margin: 0 0 4px; font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.admin-body ul { margin: 6px 0; padding-left: 18px; }
+button.danger { background: #6a2020; border-color: #8a3030; color: #fff; }
+
+@media (max-width: 640px) {
+  .admin-card { grid-template-columns: 1fr; }
+  .admin-thumb img, .admin-thumb .noThumb { width: 100%; }
+}
