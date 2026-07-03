@@ -20,6 +20,31 @@ Anonymous YouTube-style mini app:
 
 Uploads are blocked if scanning fails or malware is detected.
 
+> **⚠️ The malware scanner is Windows-only.** It shells out to Windows Defender
+> (`MpCmdRun.exe`). On Linux/macOS the scanner isn't found, so with the default
+> `ALLOW_UNSCANNED_UPLOADS=false` **every upload is blocked** (fails safe). To run
+> on a non-Windows host you must set `ALLOW_UNSCANNED_UPLOADS=true`, which means
+> **uploads are stored with no malware scanning at all.** Only do that behind a
+> trusted network, or wire in a cross-platform scanner (e.g. ClamAV) first.
+
+## Security notes (from a review pass)
+
+The code is syntactically clean, boots, and handles the basics well: file-type
+allowlist (extension + MIME), size cap, UUID stored filenames (no path traversal),
+24h TTL cleanup, and **user text is HTML-escaped** on the listing page and rendered
+via `textContent` on the watch page (no stored XSS). Known gaps, by design or not:
+
+- **No rate limiting** — anonymous unlimited uploads can exhaust disk. Add one
+  before any exposed deployment.
+- **No content verification beyond extension/MIME** — both are client-supplied; a
+  non-video file renamed `.mp4` would be stored (it just won't play). No magic-byte
+  or `ffprobe` check.
+- **No security headers** (`X-Content-Type-Options: nosniff`, CSP). Low risk given
+  the extension allowlist, but worth adding.
+- **JSON-file datastore** — concurrent uploads can race on the write. Fine for
+  light/trusted use, not for scale.
+- **No delete/report/takedown endpoint** — see the deployment warning below.
+
 ## Run
 1. Open terminal in this folder
 2. Install deps:
@@ -53,6 +78,18 @@ content (including mandatory reporting duties in many jurisdictions),
 copyright takedowns, and abuse handling fall on you, not on this codebase
 or its authors. Do not deploy this on the open internet without adding the
 missing operational and legal machinery.
+
+**The 24-hour auto-delete is not a legal shield.** Ephemerality does not remove
+an operator's duties: if illegal material (e.g. CSAM) is uploaded, reporting and
+preservation obligations can attach *regardless* of automatic deletion, and there
+is currently **no in-app way to report, review, or take down a specific video**
+before it expires. Treat "it deletes itself" as a privacy feature, not a
+compliance strategy.
+
+**Recommendation:** run this only on a private/LAN/trusted network. Do not expose
+an anonymous public instance without first adding content moderation, a
+report/takedown workflow, rate limiting, request logging suitable for legal
+process, a terms of service, and independent legal review for your jurisdiction.
 
 This software is provided **"as is", without warranty of any kind**; the
 authors accept no liability for how deployed instances are used. See
