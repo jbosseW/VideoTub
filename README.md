@@ -61,23 +61,24 @@ Uploads are blocked if scanning fails or malware is detected.
 > **uploads are stored with no malware scanning at all.** Only do that behind a
 > trusted network, or wire in a cross-platform scanner (e.g. ClamAV) first.
 
-## Security notes (from a review pass)
+## Security notes
 
 The code is syntactically clean, boots, and handles the basics well: file-type
-allowlist (extension + MIME), size cap, UUID stored filenames (no path traversal),
-24h TTL cleanup, and **user text is HTML-escaped** on the listing page and rendered
-via `textContent` on the watch page (no stored XSS). Known gaps, by design or not:
+allowlist (extension + MIME) **plus magic-byte + ffprobe validation**, size cap,
+UUID stored filenames (no path traversal), 24h TTL cleanup, rate limiting,
+security headers, PoW gate, reporting/takedown, and **user text is HTML-escaped**
+on the listing page and rendered via `textContent` on the watch page (no stored
+XSS). Remaining known limitations:
 
-- **No rate limiting** — anonymous unlimited uploads can exhaust disk. Add one
-  before any exposed deployment.
-- **No content verification beyond extension/MIME** — both are client-supplied; a
-  non-video file renamed `.mp4` would be stored (it just won't play). No magic-byte
-  or `ffprobe` check.
-- **No security headers** (`X-Content-Type-Options: nosniff`, CSP). Low risk given
-  the extension allowlist, but worth adding.
 - **JSON-file datastore** — concurrent uploads can race on the write. Fine for
-  light/trusted use, not for scale.
-- **No delete/report/takedown endpoint** — see the deployment warning below.
+  light/trusted use, not for scale (SQLite is the planned fix — see the roadmap).
+- **Exact-match hash denylist only** — a re-encode evades it; perceptual hashing
+  is on the roadmap.
+- **Malware scan is Windows-only** — see the ffmpeg/Defender note above; ClamAV
+  support is on the roadmap.
+- **No automated detection of *new* illegal content** — the NudeNet hook and
+  denylists catch NSFW/known-bad, but true CSAM detection needs a real hash
+  source (NCMEC/PhotoDNA) you must wire in. See the deployment warning below.
 
 ## Run
 1. Open terminal in this folder
